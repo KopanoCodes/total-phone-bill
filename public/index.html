@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Total Phone Bill Plan</title>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    
+
+    <style>
+        
+        :root {
+            --primary-blue: #007bff;
+            --secondary-blue: #4da6ff;
+            --accent-color: #003366;
+            --background-color: #e6f2ff;
+            --text-color: #333333;
+            --input-background: #FFFFFF;
+            --button-hover: #0056b3;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.4;
+            margin: 0;
+            padding: 20px;
+            max-width: 750px;
+            margin: 0 auto;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        h1, h2 {
+            color: var(--accent-color);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            margin-bottom: 30px;
+            border: 2px solid var(--secondary-blue);
+            padding: 20px;
+            border-radius: 10px;
+            background-color: var(--input-background);
+            box-shadow: 0 5px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--primary-blue);
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid var(--secondary-blue);
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            width: 90%;
+        }
+
+        button:hover {
+            background-color: cyan
+        }
+
+        .error {
+            color: #dc3545;
+            margin-top: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background-color: var(--input-background);
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--secondary-blue);
+        }
+
+        li strong {
+            color: var(--primary-blue);
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            form {
+                padding: 15px;
+            }
+
+            input, select, button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div x-data="phoneBillApp()">
+        <h1>Total Phone Bill</h1>
+
+        <form @submit.prevent="calculateBill">
+            <h2>Calculate Total Price Plan</h2>
+            <label for="pricePlan">Select Price Plan:</label>
+            <select id="pricePlan" x-model="selectedPlan" required>
+                <option value="">Select a plan</option>
+                <template x-for="plan in pricePlans" :key="plan.id">
+                    <option :value="plan.plan_name" x-text="plan.plan_name"></option>
+                </template>
+            </select>
+
+            <label for="actions">Enter Actions (comma separated):</label>
+            <input id="actions" type="text" x-model="actions" placeholder="e.g., call, sms, call" required />
+
+            <button type="submit">Calculate</button>
+
+            <div x-show="billTotal !== null">
+                <h3>Total Bill: R<span x-text="billTotal.toFixed(2)"></span></h3>
+            </div>
+        </form>
+
+        <h2>Price Plans</h2>
+        <ul>
+            <template x-for="plan in pricePlans" :key="plan.id">
+                <li>
+                    <strong x-text="plan.plan_name"></strong>
+                    (Call: R<span x-text="plan.call_price"></span>, SMS: R<span x-text="plan.sms_price"></span>)
+                </li>
+            </template>
+        </ul>
+
+        <form @submit.prevent="createPricePlan">
+            <h2>Create New Price Plan</h2>
+            <label for="newPlanName">Plan Name:</label>
+            <input id="newPlanName" type="text" x-model="newPlan.name" required />
+
+            <label for="newCallCost">Call Cost:</label>
+            <input id="newCallCost" type="number" step="0.01" x-model="newPlan.call_cost" required />
+
+            <label for="newSmsCost">SMS Cost:</label>
+            <input id="newSmsCost" type="number" step="0.01" x-model="newPlan.sms_cost" required />
+
+            <button type="submit">Create Plan</button>
+        </form>
+
+        <form @submit.prevent="updatePricePlan">
+            <h2>Update Price Plan</h2>
+            <label for="updatePlanName">Select Plan to Update:</label>
+            <select id="updatePlanName" x-model="updatePlan.name" required>
+                <option value="">Select a plan</option>
+                <template x-for="plan in pricePlans" :key="plan.id">
+                    <option :value="plan.plan_name" x-text="plan.plan_name"></option>
+                </template>
+            </select>
+
+            <label for="updateCallCost">New Call Cost:</label>
+            <input id="updateCallCost" type="number" step="0.01" x-model="updatePlan.call_cost" required />
+
+            <label for="updateSmsCost">New SMS Cost:</label>
+            <input id="updateSmsCost" type="number" step="0.01" x-model="updatePlan.sms_cost" required />
+
+            <button type="submit">Update Plan</button>
+        </form>
+
+        <form @submit.prevent="deletePricePlan">
+            <h2>Delete Price Plan</h2>
+            <label for="deletePlanId">Select Plan to Delete:</label>
+            <select id="deletePlanId" x-model="deletePlanId" required>
+                <option value="">Select a plan</option>
+                <template x-for="plan in pricePlans" :key="plan.id">
+                    <option :value="plan.id" x-text="plan.plan_name"></option>
+                </template>
+            </select>
+
+            <button type="submit">Delete Plan</button>
+        </form>
+
+        <div x-show="error" class="error" x-text="error"></div>
+    </div>
+    <script>
+        document.addEventListener('alpine:init', () => {
+    Alpine.data('phoneBillApp', () => ({
+        pricePlans: [],
+        selectedPlan: '',
+        actions: '',
+        billTotal: null,
+        newPlan: { name: '', call_cost: '', sms_cost: '' },
+        updatePlan: { name: '', call_cost: '', sms_cost: '' },
+        deletePlanId: '',
+        error: '',
+
+        init() {
+            this.fetchPricePlans();
+        },
+
+        async fetchPricePlans() {
+            try {
+                const response = await fetch('/api/price_plans');
+                this.pricePlans = await response.json();
+            } catch (error) {
+                this.error = 'Error fetching price plans';
+            }
+        },
+
+        async calculateBill() {
+            try {
+                const response = await fetch('/api/phonebill', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        price_plan: this.selectedPlan,
+                        actions: this.actions
+                    })
+                });
+                const data = await response.json();
+                this.billTotal = data.total;
+            } catch (error) {
+                this.error = 'Error calculating bill';
+            }
+        },
+
+        async createPricePlan() {
+            try {
+                await fetch('/api/price_plan/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.newPlan)
+                });
+                this.fetchPricePlans();
+                this.newPlan = { name: '', call_cost: '', sms_cost: '' };
+            } catch (error) {
+                this.error = 'Error creating price plan';
+            }
+        },
+
+        async updatePricePlan() {
+            try {
+                await fetch('/api/price_plan/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.updatePlan)
+                });
+                this.fetchPricePlans();
+                this.updatePlan = { name: '', call_cost: '', sms_cost: '' };
+            } catch (error) {
+                this.error = 'Error updating price plan';
+            }
+        },
+
+        async deletePricePlan() {
+            try {
+                await fetch('/api/price_plan/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: this.deletePlanId })
+                });
+                this.fetchPricePlans();
+                this.deletePlanId = '';
+            } catch (error) {
+                this.error = 'Error deleting price plan';
+            }
+        }
+    }));
+});
+    </script>
+</body>
+</html>
